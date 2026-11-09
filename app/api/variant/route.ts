@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createMaterialTransfer, uploadBuffer, uploadFromUrl } from "@/lib/lux3d";
 import { getRecord, putRecord } from "@/lib/models";
 
+// Uploads, Lux3D calls and multi-store fetches can take a while on serverless.
+export const maxDuration = 60;
+
 // Colour / material variants: repaint an existing product model with a material swatch.
 export async function POST(req: Request) {
   const { parentId, label, swatch } = (await req.json()) as { parentId: string; label: string; swatch: string };

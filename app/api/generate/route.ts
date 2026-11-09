@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createImageTo3D, createTextTo3D, uploadFromUrl, type Quality } from "@/lib/lux3d";
 import { getRecord, putRecord, type ModelRecord } from "@/lib/models";
 
+// Uploads, Lux3D calls and multi-store fetches can take a while on serverless.
+export const maxDuration = 60;
+
 type Body =
   | {
       kind: "product";

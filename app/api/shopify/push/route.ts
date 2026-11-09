@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Uploads, Lux3D calls and multi-store fetches can take a while on serverless.
+export const maxDuration = 60;
+
 // Pushes a generated GLB onto a product in the seller's own Shopify store as
 // 3D media. Shopify then shows its native 3D viewer + AR button on the product page.
 //

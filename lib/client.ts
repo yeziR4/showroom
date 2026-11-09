@@ -41,7 +41,9 @@ export function useModels(initial: ModelRecord[] = []) {
       const pending = Object.values(ref.current).filter((r) => r.status === "queued" || r.status === "running");
       for (const r of pending) {
         try {
-          const { record } = await api<{ record: ModelRecord }>(`/api/task?id=${encodeURIComponent(r.id)}`);
+          const { record } = await api<{ record: ModelRecord }>("/api/task", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ record: r }),
+          });
           setModels((m) => ({ ...m, [record.id]: record }));
         } catch {
           /* keep polling */

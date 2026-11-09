@@ -33,12 +33,22 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Deploy on Vercel
+
+1. Import this repo at vercel.com/new (framework: Next.js, no settings to change).
+2. Add the environment variable `AHOLO_API_KEY`.
+3. Optional but recommended: Storage → add **Upstash Redis** to the project. It sets
+   `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_*`), and newly built
+   models are then saved and shown to every visitor. Without it the demo catalogue
+   still works, but new models are only kept in the visitor's session.
+
 ## How it works
 
 1. `lib/shopify.ts` reads a store's public `/products.json` feed.
 2. `lib/lux3d.ts` downloads the product photo, uploads it to Aholo storage, starts a Lux3D task and polls it.
 3. `lib/models.ts` keeps one record per product so nothing is generated twice.
-   `data/catalog.json` holds pre-generated demo models; `data/cache.json` is the runtime cache.
+   `data/catalog.json` holds pre-generated demo models; new records go to Upstash Redis
+   in production or `data/cache.json` locally.
 4. The browser loads the GLB files straight from Lux3D's CDN (CORS is open) with
    `<model-viewer>` (AR included) and react-three-fiber (showroom and ad renderer).
 5. The ad studio renders the 3D scene off-screen, composites text and a synthesized
