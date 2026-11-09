@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createMaterialTransfer, uploadBuffer, uploadFromUrl } from "@/lib/lux3d";
 import { getRecord, putRecord } from "@/lib/models";
+import { QuotaError, spendBuild } from "@/lib/quota";
 
 // Uploads, Lux3D calls and multi-store fetches can take a while on serverless.
 export const maxDuration = 60;
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
   const existing = await getRecord(id);
   if (existing && existing.status !== "failed") return NextResponse.json({ record: existing });
   try {
+    await spendBuild(req);
     // Swatch is either a URL or a data: URL (generated colour chip / uploaded photo).
     let img: string;
     if (swatch.startsWith("data:")) {
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ record: rec });
   } catch (e) {
+    if (e instanceof QuotaError) return NextResponse.json({ error: e.message, quota: true }, { status: 429 });
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }

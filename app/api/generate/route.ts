@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createImageTo3D, createTextTo3D, uploadFromUrl, type Quality } from "@/lib/lux3d";
 import { getRecord, putRecord, type ModelRecord } from "@/lib/models";
+import { QuotaError, spendBuild } from "@/lib/quota";
 
 // Uploads, Lux3D calls and multi-store fetches can take a while on serverless.
 export const maxDuration = 60;
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
       const id = `prompt/${prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)}`;
       const existing = await getRecord(id);
       if (existing && existing.status !== "failed") return NextResponse.json({ record: existing });
+      await spendBuild(req);
       const taskId = await createTextTo3D(prompt, body.style);
       const rec = await putRecord({
         id, kind: "prompt", taskId, status: "queued", title: prompt,
@@ -44,6 +46,7 @@ export async function POST(req: Request) {
     if (existing && existing.status !== "failed" && !body.force) {
       return NextResponse.json({ record: existing });
     }
+    await spendBuild(req);
     const angles = Math.min(Math.max(body.angles ?? 1, 1), 4);
     const uploaded = await Promise.all(body.images.slice(0, angles).map(uploadFromUrl));
     const taskId = await createImageTo3D(uploaded, body.quality ?? "turbo");
@@ -56,6 +59,7 @@ export async function POST(req: Request) {
     await putRecord(rec);
     return NextResponse.json({ record: rec });
   } catch (e) {
+    if (e instanceof QuotaError) return NextResponse.json({ error: e.message, quota: true }, { status: 429 });
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }

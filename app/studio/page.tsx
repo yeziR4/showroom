@@ -5,6 +5,7 @@ import Link from "next/link";
 import ProductViewer from "@/components/ProductViewer";
 import VariantPanel from "@/components/VariantPanel";
 import { StatusBadge } from "@/components/ProductCard";
+import QuotaBadge from "@/components/QuotaBadge";
 import { api, generateProduct, money, useModels, type ModelRecord, type Product } from "@/lib/client";
 
 type StoreResp = { store: { domain: string; name: string; products: Product[] }; models: ModelRecord[] };
@@ -87,7 +88,8 @@ function Studio() {
           <h1 className="display" style={{ fontSize: 40, margin: "4px 0 0", lineHeight: 1 }}>{data?.store.name ?? domain} <span className="faint" style={{ fontSize: 18 }}>studio</span></h1>
           <div className="muted" style={{ fontSize: 14 }}>{products.length} products · <b style={{ color: "var(--good)" }}>{inThreeD} in 3D</b></div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <QuotaBadge bump={Object.keys(models).length + (busy ? 1 : 0)} />
           <Link href={`/store/${encodeURIComponent(domain)}`} className="btn">Open public 3D store ↗</Link>
         </div>
       </div>

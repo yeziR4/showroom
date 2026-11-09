@@ -1,3 +1,5 @@
+import { cacheGet, cacheSet } from "./redis";
+
 // Reads any public Shopify storefront through its /products.json feed.
 // No login is needed: every Shopify store publishes this feed unless the
 // storefront is password-protected.
@@ -62,16 +64,39 @@ type RawProduct = {
 const cache = new Map<string, { at: number; store: Store }>();
 const TTL = 30 * 60 * 1000;
 
+async function fetchFeed(domain: string): Promise<Response> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`https://${domain}/products.json?limit=250`, {
+        headers: { Accept: "application/json", "User-Agent": "Showroom3D/0.1" },
+        cache: "no-store",
+        redirect: "follow",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok || (res.status !== 429 && res.status < 500)) return res;
+      last = res;
+    } catch {
+      /* network error or timeout — retry */
+    }
+    await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+  }
+  if (last) return last;
+  throw new Error(`${domain} did not respond`);
+}
+
 export async function fetchStore(rawDomain: string): Promise<Store> {
   const domain = normalizeDomain(rawDomain);
   const hit = cache.get(domain);
   if (hit && Date.now() - hit.at < TTL) return hit.store;
+  // Shared cache across serverless instances, so search doesn't refetch 15 feeds.
+  const shared = await cacheGet<Store>(`showroom:store:${domain}`);
+  if (shared) {
+    cache.set(domain, { at: Date.now(), store: shared });
+    return shared;
+  }
 
-  const res = await fetch(`https://${domain}/products.json?limit=250`, {
-    headers: { Accept: "application/json", "User-Agent": "Showroom3D/0.1" },
-    cache: "no-store",
-    redirect: "follow",
-  });
+  const res = await fetchFeed(domain);
   if (!res.ok) throw new Error(`${domain} did not return a product feed (HTTP ${res.status})`);
   let raw: { products: RawProduct[] };
   try {
@@ -97,6 +122,7 @@ export async function fetchStore(rawDomain: string): Promise<Store> {
 
   const store: Store = { domain, name: prettyName(domain), products };
   cache.set(domain, { at: Date.now(), store });
+  await cacheSet(`showroom:store:${domain}`, store, 3600);
   return store;
 }
 

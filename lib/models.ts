@@ -7,6 +7,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { getTask, type TaskStatus } from "./lux3d";
+import { hasRedis, redis } from "./redis";
 
 export type ModelRecord = {
   id: string; // product id (`domain/handle`) or `prompt/<slug>` / `variant/...`
@@ -32,23 +33,8 @@ import catalogJson from "@/data/catalog.json";
 const CATALOG = catalogJson as unknown as Record<string, ModelRecord>;
 
 // ---------- storage backends ----------
-// Production (Vercel): Upstash Redis via its REST API — add the Upstash integration
-// in the Vercel dashboard and it sets these env vars. Local dev: a JSON file.
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+// Production (Vercel): Upstash Redis. Local dev: a JSON file.
 const HASH = "showroom:models";
-
-async function redis<T>(cmd: (string | number)[]): Promise<T> {
-  const res = await fetch(REDIS_URL!, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify(cmd),
-    cache: "no-store",
-  });
-  const body = (await res.json()) as { result?: T; error?: string };
-  if (body.error) throw new Error(`Redis: ${body.error}`);
-  return body.result as T;
-}
 
 const CACHE_FILE = path.join(process.cwd(), "data", "cache.json");
 let fileMem: Record<string, ModelRecord> | null = null;
@@ -64,7 +50,7 @@ async function fileLoad(): Promise<Record<string, ModelRecord>> {
 }
 
 async function loadAll(): Promise<Record<string, ModelRecord>> {
-  if (REDIS_URL && REDIS_TOKEN) {
+  if (hasRedis) {
     const flat = (await redis<string[]>(["HGETALL", HASH])) ?? [];
     const out: Record<string, ModelRecord> = {};
     for (let i = 0; i < flat.length; i += 2) out[flat[i]] = JSON.parse(flat[i + 1]);
@@ -74,7 +60,7 @@ async function loadAll(): Promise<Record<string, ModelRecord>> {
 }
 
 export async function getRecord(id: string): Promise<ModelRecord | undefined> {
-  if (REDIS_URL && REDIS_TOKEN) {
+  if (hasRedis) {
     const v = await redis<string | null>(["HGET", HASH, id]);
     return v ? JSON.parse(v) : CATALOG[id];
   }
@@ -82,7 +68,7 @@ export async function getRecord(id: string): Promise<ModelRecord | undefined> {
 }
 
 export async function putRecord(rec: ModelRecord): Promise<ModelRecord> {
-  if (REDIS_URL && REDIS_TOKEN) {
+  if (hasRedis) {
     await redis(["HSET", HASH, rec.id, JSON.stringify(rec)]);
     return rec;
   }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import ProductViewer from "./ProductViewer";
 import { StatusBadge } from "./ProductCard";
+import QuotaBadge from "./QuotaBadge";
 import { generateProduct, money, type ModelRecord, type Product } from "@/lib/client";
 
 export default function ProductDrawer({
@@ -53,7 +54,10 @@ export default function ProductDrawer({
 
           {!rec?.glb && !building && (
             <div className="card" style={{ padding: 16, marginTop: 20 }}>
-              <div style={{ fontWeight: 700 }}>Not in 3D yet</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 700 }}>Not in 3D yet</div>
+                <QuotaBadge bump={rec?.taskId} />
+              </div>
               <div className="muted" style={{ fontSize: 14, margin: "4px 0 12px" }}>
                 Lux3D will build a textured 3D model from {angles === 1 ? "the main product photo" : `${angles} product photos`}.
               </div>

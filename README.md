@@ -42,6 +42,18 @@ Open http://localhost:3000.
    models are then saved and shown to every visitor. Without it the demo catalogue
    still works, but new models are only kept in the visitor's session.
 
+### Credit protection
+
+Every Lux3D build costs credits, so the public site caps builds per day
+(viewing existing models is always free). Override with environment variables:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DAILY_BUILD_LIMIT` | 40 | Builds per day across the whole site |
+| `DAILY_BUILDS_PER_VISITOR` | 8 | Builds per day per visitor (by IP) |
+
+The counters live in Redis when it is connected.
+
 ## How it works
 
 1. `lib/shopify.ts` reads a store's public `/products.json` feed.
