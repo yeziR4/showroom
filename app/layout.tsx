@@ -7,9 +7,19 @@ import "./globals.css";
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://showroom-flax-two.vercel.app";
+const TITLE = "Showroom — one photo to a 3D product";
+const DESC = "Drop in a product photo and Aholo Lux3D builds a real 3D model in about a minute — then AR, 3D video ads and a 3D storefront.";
+
 export const metadata: Metadata = {
-  title: "Showroom — one photo to a 3D product",
-  description: "Drop in a product photo and Aholo Lux3D builds a real 3D model in about a minute — then AR, 3D video ads and a 3D storefront.",
+  metadataBase: new URL(SITE),
+  title: TITLE,
+  description: DESC,
+  openGraph: {
+    title: TITLE, description: DESC, url: SITE, siteName: "Showroom", type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "A product photo turned into a 3D model by Lux3D" }],
+  },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESC, images: ["/og.png"] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

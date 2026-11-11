@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -223,12 +223,20 @@ function Floor({ on }: { on: boolean }) {
   return on ? <ContactShadows position={[0, -0.62, 0]} opacity={0.55} scale={6} blur={2.4} far={2} color="#000" /> : null;
 }
 
+// Catches a GLB that fails to download or parse, so the stage never hangs silently.
+class ModelBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { this.props.onError(); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
 export type BuildPhase = "uploading" | "building" | "done" | "failed";
 
 export default function BuildStage({
-  image, glb, phase, speed = 1, onRevealed,
+  image, glb, phase, speed = 1, onRevealed, onModelError,
 }: {
-  image: string; glb?: string; phase: BuildPhase; speed?: number; onRevealed?: () => void;
+  image: string; glb?: string; phase: BuildPhase; speed?: number; onRevealed?: () => void; onModelError?: () => void;
 }) {
   const [cloud, setCloud] = useState<Cloud | null>(null);
   const [revealAt, setRevealAt] = useState<number | null>(null);
@@ -263,9 +271,11 @@ export default function BuildStage({
     >
       {cloud && <ParticleSculpture cloud={cloud} revealAt={revealAt} speed={speed} />}
       {glb && phase === "done" && (
-        <Suspense fallback={null}>
-          <LandedModel glb={glb} revealAt={revealAt} onLoaded={() => setModelReady(true)} />
-        </Suspense>
+        <ModelBoundary onError={() => onModelError?.()}>
+          <Suspense fallback={null}>
+            <LandedModel glb={glb} revealAt={revealAt} onLoaded={() => setModelReady(true)} />
+          </Suspense>
+        </ModelBoundary>
       )}
       <CameraFit />
       <Floor on={revealAt !== null} />

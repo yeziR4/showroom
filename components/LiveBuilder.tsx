@@ -3,6 +3,7 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { api, type ModelRecord } from "@/lib/client";
+import { useProgress } from "@react-three/drei";
 import type { BuildPhase } from "./BuildStage";
 
 const BuildStage = dynamic(() => import("./BuildStage"), { ssr: false });
@@ -66,6 +67,9 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   const [drag, setDrag] = useState(false);
   const [tip, setTip] = useState(0);
   const [share, setShare] = useState(true);
+  const [modelError, setModelError] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
+  const { progress: loadPct } = useProgress();
   const shareRef = useRef(share);
   shareRef.current = share;
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,10 +78,10 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
 
   // ticking clock for the timer
   useEffect(() => {
-    if (!job || job.finished || job.phase === "failed") return;
-    const id = setInterval(() => setNow(Date.now()), 100);
+    if (!job || job.phase === "failed" || (job.finished && revealed)) return;
+    const id = setInterval(() => setNow(Date.now()), job.finished ? 1000 : 100);
     return () => clearInterval(id);
-  }, [job]);
+  }, [job, revealed]);
 
   useEffect(() => {
     if (!job || revealed) return;
@@ -104,9 +108,26 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   }, [job?.record?.id, job?.phase, job?.replay]);
 
   const start = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) return;
+    setPickError(null);
+    const isHeic = /hei[cf]$/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+    if (!file.type.startsWith("image/") && !isHeic) {
+      setPickError("That isn’t an image. Choose a JPG, PNG or WebP photo of a product.");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setPickError("That photo is over 25 MB. Try a smaller one, or a screenshot of it.");
+      return;
+    }
+    let image: string;
+    try {
+      image = await prepareImage(file);
+    } catch {
+      setPickError(isHeic
+        ? "This browser can’t open iPhone HEIC photos. Export it as JPG (or take a screenshot) and try again."
+        : "Couldn’t read that photo. Try a JPG or PNG.");
+      return;
+    }
     setRevealed(false);
-    const image = await prepareImage(file);
     const title = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 60);
     const started = Date.now();
     setJob({ image, title, phase: "uploading", started, replay: false });
@@ -135,7 +156,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
     setTimeout(() => setJob((j) => (j?.record?.id === m.id ? { ...j, phase: "done", finished: Date.now() } : j)), 4200);
   }
 
-  function reset() { setJob(null); setRevealed(false); }
+  function reset() { setJob(null); setRevealed(false); setModelError(false); }
 
   // paste an image from the clipboard
   useEffect(() => {
@@ -148,6 +169,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   }, [start]);
 
   const elapsed = job ? (job.finished ?? now) - job.started : 0;
+  const slowLoad = !!job?.finished && !revealed && Date.now() - job.finished > 40_000;
   // Replays run the stage list at 15× so they read as a replay, not a fake live build.
   const stepClock = job?.replay ? elapsed * 15 : elapsed;
   const activeStep = job?.phase === "uploading" ? 0 : STEPS.reduce((acc, s, i) => (stepClock / 1000 >= s.at ? i : acc), 0);
@@ -165,12 +187,17 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
           className="dropzone"
           data-drag={drag || undefined}
         >
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && start(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) start(f); }} />
           <div className="drop-icon">⬆</div>
           <div style={{ fontWeight: 700, fontSize: 20 }}>Drop a product photo</div>
           <div className="muted" style={{ fontSize: 14 }}>or click to choose · or paste · JPG / PNG</div>
           <div className="faint" style={{ fontSize: 12, marginTop: 10 }}>Best: one object, plain background. About a minute to build.</div>
         </div>
+        {pickError && (
+          <div role="alert" style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "color-mix(in srgb, var(--accent) 10%, var(--card))", color: "var(--ink)", fontSize: 14 }}>
+            {pickError}
+          </div>
+        )}
         <label className="muted" style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginTop: 10 }}>
           <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
           Add my model to the public showcase
@@ -206,7 +233,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
         </div>
         <div className="build-arrow" aria-hidden>→</div>
         <div className="build-stage">
-          <BuildStage image={job.image} glb={glb} phase={job.phase} speed={job.replay ? 1.6 : 1} onRevealed={() => {
+          <BuildStage image={job.image} glb={glb} phase={job.phase} speed={job.replay ? 1.6 : 1} onModelError={() => setModelError(true)} onRevealed={() => {
             setRevealed(true);
             const rec = jobRef.current?.record;
             if (rec?.glb && rec.kind === "photo" && rec.public !== false && !jobRef.current?.replay) {
@@ -231,9 +258,33 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
                     <span className="dot" />{s.label}
                   </li>
                 ))}
+                {done && (
+                  <li data-state="active">
+                    <span className="dot" />
+                    {job.replay ? "Loading the 3D model" : "Model ready — loading it into your browser"}
+                    {loadPct > 0 && loadPct < 100 ? ` · ${Math.round(loadPct)}%` : "…"}
+                  </li>
+                )}
               </ol>
+              {done && !modelError && slowLoad && (
+                <div className="tip" style={{ opacity: 0.9 }}>
+                  Taking a while on this connection.{" "}
+                  <a href={glb} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>Open the model file</a> or keep waiting.
+                </div>
+              )}
               <div className="bar"><div style={{ width: `${progress * 100}%` }} /></div>
               <div className="tip">{TIPS[tip]}</div>
+            </div>
+          )}
+
+          {modelError && !revealed && (
+            <div className="hud hud-center">
+              <div style={{ fontWeight: 700, fontSize: 18 }}>Lux3D built it, but your browser couldn’t display it</div>
+              <div style={{ opacity: 0.8, fontSize: 14, margin: "6px 0 14px", maxWidth: 340 }}>The 3D file is fine — you can download it, or try again on another browser.</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                {glb && <a className="btn btn-accent" href={glb} download>Download GLB</a>}
+                <button className="btn" onClick={reset}>Build another</button>
+              </div>
             </div>
           )}
 
