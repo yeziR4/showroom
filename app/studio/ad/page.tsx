@@ -106,7 +106,7 @@ function AdStudio() {
 
   useEffect(() => {
     const id = params.get("id");
-    api<{ models: ModelRecord[] }>("/api/models").then((r) => {
+    api<{ models: ModelRecord[] }>(`/api/models${id ? `?id=${encodeURIComponent(id)}` : ""}`).then((r) => {
       setChoices(r.models);
       const pick = (id && r.models.find((m) => m.id === id)) || r.models[0];
       if (pick) choose(pick);

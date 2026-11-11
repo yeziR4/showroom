@@ -1,97 +1,51 @@
 import Link from "next/link";
+import LiveBuilder from "@/components/LiveBuilder";
 import ProductViewer from "@/components/ProductViewer";
 import { listRecords } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
 
-const TOOLS: { name: string; what: string; engine: string; live: boolean; href?: string }[] = [
-  { name: "Photo → 3D product", what: "Every product photo you already have becomes a 3D model.", engine: "Lux3D image-to-3D", live: true, href: "/studio" },
-  { name: "3D ad studio", what: "Cinematic product ads for TikTok, Reels and YouTube in one click.", engine: "Lux3D model + motion", live: true, href: "/studio/ad" },
-  { name: "View in your room", what: "AR try-on on any phone, at the product's real size.", engine: "Lux3D size prediction", live: true },
-  { name: "Colour variants", what: "Show every colourway without a new photoshoot.", engine: "Lux3D material transfer", live: true, href: "/studio" },
-  { name: "Idea → product", what: "Describe a product and test demand before you make it.", engine: "Lux3D text-to-3D", live: true, href: "/studio" },
-  { name: "Shopify plugin", what: "Push 3D + AR straight onto your Shopify product pages.", engine: "Shopify Admin API", live: true, href: "/studio" },
-  { name: "Embed anywhere", what: "One line of HTML puts a spinning 3D product on any site.", engine: "model-viewer", live: true, href: "/studio" },
-  { name: "Lifestyle scenes", what: "Drop your product into a generated room for ad backdrops.", engine: "Aholo SpatialGen", live: false },
-  { name: "Exploded view", what: "Pull a product apart to show what's inside.", engine: "Lux3D part split", live: false },
-  { name: "Print a prototype", what: "Export STL / 3MF for a physical sample.", engine: "Lux3D multi-format export", live: false },
+const NEXT = [
+  { name: "View in your room", what: "Customers place the product in their space with their phone's AR.", href: null },
+  { name: "3D video ads", what: "Turn the model into a TikTok, Reels or YouTube ad with camera moves and music.", href: "/studio/ad" },
+  { name: "Colourways", what: "Lux3D repaints the model in new colours and materials — no new photoshoot.", href: "/studio" },
+  { name: "On your store", what: "Push the model to Shopify, or embed it on any site with one line of HTML.", href: "/studio" },
 ];
 
 export default async function Home() {
-  const models = await listRecords((r) => r.status === "succeeded" && !!r.glb);
-  const hero = models.find((m) => m.id === "demo/lounge-chair") ?? models[0];
+  const all = await listRecords((r) => r.status === "succeeded" && !!r.glb && r.kind === "product");
+  const examples = all.filter((m) => m.image);
 
   return (
     <main>
-      <section className="wrap" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.05fr) minmax(0,1fr)", gap: 32, alignItems: "center", padding: "56px 24px 32px" }} data-hero>
-        <div>
-          <span className="pill pill-accent">Built on Aholo Lux3D</span>
-          <h1 className="display" style={{ fontSize: "clamp(44px, 7vw, 84px)", lineHeight: 0.98, margin: "18px 0 18px" }}>
-            Every product,<br />in 3D. <em style={{ color: "var(--accent)" }}>Instantly.</em>
+      <section className="wrap" style={{ paddingTop: 32 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ maxWidth: 760 }}>
+          <span className="pill pill-accent">Powered by Aholo Lux3D</span>
+          <h1 className="display" style={{ fontSize: "clamp(36px, 5vw, 60px)", lineHeight: 1.02, margin: "14px 0 0" }}>
+            One product photo.<br />A real 3D model in <em style={{ color: "var(--accent)" }}>about a minute.</em>
           </h1>
-          <p className="muted" style={{ fontSize: 19, maxWidth: 520, margin: 0 }}>
-            Paste a store link. Showroom turns its product photos into 3D models, AR try-ons and
-            scroll-stopping 3D video ads — then lets shoppers walk the store in 3D.
+        </div>
+          <p className="muted" style={{ fontSize: 16, maxWidth: 400, margin: 0 }}>
+            Drop in a photo of something you sell. Watch Lux3D build it in 3D, then spin it, place it in your room with AR
+            and turn it into a video ad.
           </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 32, maxWidth: 560 }} data-doors>
-            <Link href="/studio" className="card" style={{ padding: 20, display: "block" }}>
-              <div className="eyebrow">For sellers</div>
-              <div style={{ fontWeight: 700, fontSize: 20, margin: "6px 0 4px" }}>Build my store →</div>
-              <div className="muted" style={{ fontSize: 14 }}>3D, AR, ads and variants for your products.</div>
-            </Link>
-            <Link href="/explore" className="card" style={{ padding: 20, display: "block", background: "var(--ink)", color: "var(--bg)", borderColor: "var(--ink)" }}>
-              <div className="eyebrow">For shoppers</div>
-              <div style={{ fontWeight: 700, fontSize: 20, margin: "6px 0 4px" }}>Explore stores →</div>
-              <div style={{ fontSize: 14, opacity: 0.7 }}>Search any store or item and see it in 3D.</div>
-            </Link>
-          </div>
         </div>
 
-        <div style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 28, background: "radial-gradient(ellipse at 50% 60%, var(--card), var(--bg-2))", border: "1px solid var(--line)" }}>
-          {hero?.glb && <ProductViewer src={hero.glb} alt={hero.title} poster={hero.image} />}
-          <div style={{ position: "absolute", left: 16, top: 16, display: "flex", gap: 8 }}>
-            <span className="pill pill-live">● Generated by Lux3D</span>
-          </div>
-          {hero && (
-            <div style={{ position: "absolute", left: 16, bottom: 16, maxWidth: "60%" }}>
-              <div style={{ fontWeight: 600 }}>{hero.title}</div>
-              <div className="faint" style={{ fontSize: 13 }}>Drag to spin · pinch to zoom</div>
-            </div>
-          )}
+        <div style={{ marginTop: 24 }}>
+          <LiveBuilder examples={examples} />
         </div>
       </section>
 
-      <section className="wrap" style={{ marginTop: 48 }}>
-        <div className="eyebrow">How it works</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 14 }}>
-          {[
-            ["1", "Paste a store", "Any public Shopify store — yours or one you love."],
-            ["2", "Lux3D builds it", "Each product photo becomes a textured 3D model in about two minutes."],
-            ["3", "Sell in 3D", "AR try-on, 3D ads, colour variants and a walk-through store."],
-          ].map(([n, t, d]) => (
-            <div key={n} className="card" style={{ padding: 22 }}>
-              <div className="display" style={{ fontSize: 40, color: "var(--accent)", lineHeight: 1 }}>{n}</div>
-              <div style={{ fontWeight: 700, marginTop: 10 }}>{t}</div>
-              <div className="muted" style={{ fontSize: 14 }}>{d}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="wrap" style={{ marginTop: 64 }}>
-        <div className="eyebrow">The toolkit</div>
-        <h2 className="display" style={{ fontSize: 40, margin: "8px 0 20px" }}>One photo in. A whole 3D storefront out.</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-          {TOOLS.map((t) => {
+      <section className="wrap" style={{ marginTop: 72 }}>
+        <div className="eyebrow">After the model</div>
+        <h2 className="display" style={{ fontSize: 36, margin: "8px 0 18px" }}>What sellers do with it</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+          {NEXT.map((t) => {
             const inner = (
-              <div className="card" style={{ padding: 18, height: "100%", opacity: t.live ? 1 : 0.7 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div style={{ fontWeight: 700 }}>{t.name}</div>
-                  <span className={t.live ? "pill pill-live" : "pill"}>{t.live ? "Live" : "Soon"}</span>
-                </div>
-                <div className="muted" style={{ fontSize: 14, margin: "6px 0 10px" }}>{t.what}</div>
-                <div className="faint" style={{ fontSize: 12, fontWeight: 600 }}>{t.engine}</div>
+              <div className="card" style={{ padding: 18, height: "100%" }}>
+                <div style={{ fontWeight: 700 }}>{t.name}{t.href && " →"}</div>
+                <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{t.what}</div>
               </div>
             );
             return t.href ? <Link key={t.name} href={t.href}>{inner}</Link> : <div key={t.name}>{inner}</div>;
@@ -99,31 +53,32 @@ export default async function Home() {
         </div>
       </section>
 
-      {models.length > 0 && (
-        <section className="wrap" style={{ marginTop: 64 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12 }}>
+      {all.length > 0 && (
+        <section className="wrap" style={{ marginTop: 72 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
             <div>
-              <div className="eyebrow">Freshly built</div>
-              <h2 className="display" style={{ fontSize: 32, margin: "8px 0 16px" }}>Made in 3D by Lux3D</h2>
+              <div className="eyebrow">The 3D mall</div>
+              <h2 className="display" style={{ fontSize: 36, margin: "8px 0 4px" }}>Real store products, rebuilt by Lux3D</h2>
+              <p className="muted" style={{ margin: "0 0 18px" }}>Every model below was generated from the store’s own product photo.</p>
             </div>
-            <Link href="/explore" className="btn btn-sm">See all →</Link>
+            <Link href="/explore" className="btn">Explore stores →</Link>
           </div>
           <div className="grid">
-            {models.slice(0, 8).map((m) => (
-              <div key={m.id} className="card" style={{ overflow: "hidden" }}>
-                <div style={{ aspectRatio: "1/1", background: "var(--bg-2)" }}>
+            {all.slice(0, 8).map((m) => (
+              <Link key={m.id} href={m.domain && m.domain !== "demo" ? `/store/${encodeURIComponent(m.domain)}` : "/explore"} className="card" style={{ overflow: "hidden" }}>
+                <div style={{ aspectRatio: "1/1", background: "var(--bg-2)", position: "relative" }}>
                   <ProductViewer src={m.glb!} alt={m.title} poster={m.image} ar={false} />
+                  <span className="pill" style={{ position: "absolute", left: 10, top: 10 }}>{m.example ? "Example" : "Built live"}</span>
                 </div>
                 <div style={{ padding: 14 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{m.title}</div>
-                  <div className="faint" style={{ fontSize: 13 }}>{m.domain}</div>
+                  <div className="faint" style={{ fontSize: 13 }}>{m.domain === "demo" ? "Lux3D sample" : m.domain?.replace(/^www\./, "")}</div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
       )}
-      <style>{`@media (max-width: 860px){ [data-hero]{ grid-template-columns: 1fr !important; padding-top: 28px !important } } @media (max-width:480px){ [data-doors]{ grid-template-columns: 1fr !important } }`}</style>
     </main>
   );
 }

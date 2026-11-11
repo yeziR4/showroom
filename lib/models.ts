@@ -11,7 +11,7 @@ import { hasRedis, redis } from "./redis";
 
 export type ModelRecord = {
   id: string; // product id (`domain/handle`) or `prompt/<slug>` / `variant/...`
-  kind: "product" | "prompt" | "variant";
+  kind: "product" | "prompt" | "variant" | "photo";
   taskId: number;
   status: TaskStatus;
   glb?: string;
@@ -26,11 +26,14 @@ export type ModelRecord = {
   createdAt: number;
   updatedAt: number;
   error?: string;
+  example?: boolean; // pre-generated demo model from data/catalog.json
 };
 
 // Committed demo models are bundled into the build (works on serverless hosts).
 import catalogJson from "@/data/catalog.json";
-const CATALOG = catalogJson as unknown as Record<string, ModelRecord>;
+const CATALOG: Record<string, ModelRecord> = Object.fromEntries(
+  Object.entries(catalogJson as unknown as Record<string, ModelRecord>).map(([k, v]) => [k, { ...v, example: true }]),
+);
 
 // ---------- storage backends ----------
 // Production (Vercel): Upstash Redis. Local dev: a JSON file.

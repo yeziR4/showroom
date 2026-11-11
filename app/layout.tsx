@@ -8,8 +8,8 @@ const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Showroom — every product in 3D",
-  description: "Turn any Shopify store into 3D products, AR try-ons and 3D video ads, built with Aholo Lux3D.",
+  title: "Showroom — one photo to a 3D product",
+  description: "Drop in a product photo and Aholo Lux3D builds a real 3D model in about a minute — then AR, 3D video ads and a 3D storefront.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
