@@ -5,9 +5,9 @@ import { createElement } from "react";
 // Gives orbit controls, auto-rotate and AR on phones: Scene Viewer on Android,
 // Quick Look on iOS (model-viewer converts GLB → USDZ on the fly if no usdz is given).
 export default function ProductViewer({
-  src, usdz, poster, alt, ar = true, autoRotate = true, style,
+  src, usdz, poster, alt, ar = true, autoRotate = true, lazy = false, style,
 }: {
-  src: string; usdz?: string; poster?: string; alt: string; ar?: boolean; autoRotate?: boolean;
+  src: string; usdz?: string; poster?: string; alt: string; ar?: boolean; autoRotate?: boolean; lazy?: boolean;
   style?: React.CSSProperties;
 }) {
   return createElement(
@@ -29,7 +29,7 @@ export default function ProductViewer({
       exposure: "1.05",
       "environment-image": "neutral",
       "interaction-prompt": "none",
-      loading: "eager",
+      loading: lazy ? "lazy" : "eager",
       style: { width: "100%", height: "100%", ...style },
     },
     ar

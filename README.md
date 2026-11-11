@@ -54,6 +54,19 @@ Every Lux3D build costs credits, so the public site caps builds per day
 
 The counters live in Redis when it is connected.
 
+### Public showcase
+
+Every model built on the site (store products, text prompts and visitors' uploaded
+photos) appears in the landing-page showcase, newest first. Visitors can untick
+"Add my model to the public showcase" before uploading. To take something down,
+set `ADMIN_KEY` in Vercel and open:
+
+```
+https://<your-site>/api/admin/hide?id=<model id>&key=<ADMIN_KEY>
+```
+
+Add `&undo=1` to bring it back. Model ids are in `/api/models`.
+
 ## How it works
 
 1. `lib/shopify.ts` reads a store's public `/products.json` feed.

@@ -153,3 +153,6 @@ model-viewer { width: 100%; height: 100%; --poster-color: transparent; backgroun
   .nav-links a { padding: 6px 8px; font-size: 13px; }
   .nav-links a[href="/studio/ad"] { display: none; }
 }
+
+.showcase-card.is-new { animation: arrive .7s cubic-bezier(.2,.8,.2,1.2) both; box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+@keyframes arrive { from { opacity: 0; transform: translateY(16px) scale(.96); } }

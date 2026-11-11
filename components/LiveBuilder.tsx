@@ -65,6 +65,9 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   const [now, setNow] = useState(Date.now());
   const [drag, setDrag] = useState(false);
   const [tip, setTip] = useState(0);
+  const [share, setShare] = useState(true);
+  const shareRef = useRef(share);
+  shareRef.current = share;
   const fileRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef(job);
   jobRef.current = job;
@@ -110,7 +113,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
     try {
       const { record } = await api<{ record: ModelRecord }>("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "photo", image, title }),
+        body: JSON.stringify({ kind: "photo", image, title, public: shareRef.current }),
       });
       // Same photo built before: show it straight away, honestly labelled.
       if (record.status === "succeeded" && record.glb) {
@@ -168,6 +171,10 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
           <div className="muted" style={{ fontSize: 14 }}>or click to choose · or paste · JPG / PNG</div>
           <div className="faint" style={{ fontSize: 12, marginTop: 10 }}>Best: one object, plain background. About a minute to build.</div>
         </div>
+        <label className="muted" style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginTop: 10 }}>
+          <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+          Add my model to the public showcase
+        </label>
         {examples.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <div className="faint" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>NO PHOTO HANDY? REPLAY ONE BUILT EARLIER</div>
@@ -199,7 +206,13 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
         </div>
         <div className="build-arrow" aria-hidden>→</div>
         <div className="build-stage">
-          <BuildStage image={job.image} glb={glb} phase={job.phase} speed={job.replay ? 1.6 : 1} onRevealed={() => setRevealed(true)} />
+          <BuildStage image={job.image} glb={glb} phase={job.phase} speed={job.replay ? 1.6 : 1} onRevealed={() => {
+            setRevealed(true);
+            const rec = jobRef.current?.record;
+            if (rec?.glb && rec.kind === "photo" && rec.public !== false && !jobRef.current?.replay) {
+              window.dispatchEvent(new CustomEvent("showroom:built", { detail: rec }));
+            }
+          }} />
 
           <div className="hud hud-top">
             <span className={`hud-pill ${done ? "ok" : "live"}`}>

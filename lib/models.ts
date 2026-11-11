@@ -27,7 +27,17 @@ export type ModelRecord = {
   updatedAt: number;
   error?: string;
   example?: boolean; // pre-generated demo model from data/catalog.json
+  public?: boolean; // visitor uploads: shown in the showcase unless the visitor opted out
+  hidden?: boolean; // removed from the showcase by the site owner
 };
+
+// What the public showcase may show.
+export function isShowcased(r: ModelRecord): boolean {
+  if (r.status !== "succeeded" || !r.glb || r.hidden) return false;
+  if (r.kind === "variant") return false;
+  if (r.kind === "photo") return r.public !== false;
+  return true;
+}
 
 // Committed demo models are bundled into the build (works on serverless hosts).
 import catalogJson from "@/data/catalog.json";
@@ -52,14 +62,20 @@ async function fileLoad(): Promise<Record<string, ModelRecord>> {
   return fileMem!;
 }
 
+// Stored copies of catalog models (e.g. after being hidden) stay labelled as examples.
+function withExampleFlags(all: Record<string, ModelRecord>) {
+  for (const id of Object.keys(CATALOG)) if (all[id]) all[id] = { ...all[id], example: true };
+  return all;
+}
+
 async function loadAll(): Promise<Record<string, ModelRecord>> {
   if (hasRedis) {
     const flat = (await redis<string[]>(["HGETALL", HASH])) ?? [];
     const out: Record<string, ModelRecord> = {};
     for (let i = 0; i < flat.length; i += 2) out[flat[i]] = JSON.parse(flat[i + 1]);
-    return { ...CATALOG, ...out };
+    return withExampleFlags({ ...CATALOG, ...out });
   }
-  return { ...CATALOG, ...(await fileLoad()) };
+  return withExampleFlags({ ...CATALOG, ...(await fileLoad()) });
 }
 
 export async function getRecord(id: string): Promise<ModelRecord | undefined> {

@@ -22,7 +22,7 @@ type Body =
     }
   | { kind: "prompt"; prompt: string; style?: string }
   // A photo the visitor uploads, already resized in the browser (data: URL).
-  | { kind: "photo"; image: string; title?: string };
+  | { kind: "photo"; image: string; title?: string; public?: boolean };
 
 export async function POST(req: Request) {
   const body = (await req.json()) as Body;
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       const taskId = await createImageTo3D([url], "turbo");
       const rec = await putRecord({
         id, kind: "photo", taskId, status: "queued", title: (body.title ?? "").trim().slice(0, 80) || "Your product",
-        image: url, createdAt: Date.now(), updatedAt: Date.now(),
+        image: url, public: body.public !== false, createdAt: Date.now(), updatedAt: Date.now(),
       });
       return NextResponse.json({ record: rec });
     }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import LiveBuilder from "@/components/LiveBuilder";
-import ProductViewer from "@/components/ProductViewer";
-import { listRecords } from "@/lib/models";
+import Showcase from "@/components/Showcase";
+import { isShowcased, listRecords } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +13,9 @@ const NEXT = [
 ];
 
 export default async function Home() {
-  const all = await listRecords((r) => r.status === "succeeded" && !!r.glb && r.kind === "product");
-  const examples = all.filter((m) => m.image);
+  const showcased = await listRecords(isShowcased);
+  showcased.sort((a, b) => Number(!!a.example) - Number(!!b.example) || b.createdAt - a.createdAt);
+  const examples = showcased.filter((m) => m.kind === "product" && m.image);
 
   return (
     <main>
@@ -53,32 +54,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {all.length > 0 && (
-        <section className="wrap" style={{ marginTop: 72 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <div className="eyebrow">The 3D mall</div>
-              <h2 className="display" style={{ fontSize: 36, margin: "8px 0 4px" }}>Real store products, rebuilt by Lux3D</h2>
-              <p className="muted" style={{ margin: "0 0 18px" }}>Every model below was generated from the store’s own product photo.</p>
-            </div>
-            <Link href="/explore" className="btn">Explore stores →</Link>
-          </div>
-          <div className="grid">
-            {all.slice(0, 8).map((m) => (
-              <Link key={m.id} href={m.domain && m.domain !== "demo" ? `/store/${encodeURIComponent(m.domain)}` : "/explore"} className="card" style={{ overflow: "hidden" }}>
-                <div style={{ aspectRatio: "1/1", background: "var(--bg-2)", position: "relative" }}>
-                  <ProductViewer src={m.glb!} alt={m.title} poster={m.image} ar={false} />
-                  <span className="pill" style={{ position: "absolute", left: 10, top: 10 }}>{m.example ? "Example" : "Built live"}</span>
-                </div>
-                <div style={{ padding: 14 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{m.title}</div>
-                  <div className="faint" style={{ fontSize: 13 }}>{m.domain === "demo" ? "Lux3D sample" : m.domain?.replace(/^www\./, "")}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <Showcase initial={showcased.slice(0, 12)} total={showcased.length} />
     </main>
   );
 }
