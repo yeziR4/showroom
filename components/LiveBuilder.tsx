@@ -3,6 +3,7 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { api, type ModelRecord } from "@/lib/client";
+import ProductViewer from "./ProductViewer";
 import { useProgress } from "@react-three/drei";
 import type { BuildPhase } from "./BuildStage";
 
@@ -69,6 +70,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   const [share, setShare] = useState(true);
   const [modelError, setModelError] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const { progress: loadPct } = useProgress();
   const shareRef = useRef(share);
   shareRef.current = share;
@@ -232,9 +234,12 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
           <img src={job.image} alt="" />
         </div>
         <div className="build-arrow" aria-hidden>→</div>
-        <div className="build-stage">
+        <div className="build-stage" ref={stageRef}>
           <BuildStage image={job.image} glb={glb} phase={job.phase} speed={job.replay ? 1.6 : 1} onModelError={() => setModelError(true)} onRevealed={() => {
             setRevealed(true);
+            // If they scrolled down to play with an example, bring them back for the reveal.
+            const r = stageRef.current?.getBoundingClientRect();
+            if (r && (r.top < 64 || r.bottom > window.innerHeight)) stageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
             const rec = jobRef.current?.record;
             if (rec?.glb && rec.kind === "photo" && rec.public !== false && !jobRef.current?.replay) {
               window.dispatchEvent(new CustomEvent("showroom:built", { detail: rec }));
@@ -304,6 +309,16 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
         </div>
       </div>
 
+      {!job.replay && !revealed && job.phase !== "failed" && examples.length > 0 && (
+        <WhileYouWait
+          examples={examples}
+          timer={fmt(elapsed)}
+          step={done ? "Model ready — loading it" : STEPS[activeStep].label}
+          progress={progress}
+          onJumpBack={() => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        />
+      )}
+
       {revealed && glb && (
         <div className="next-row">
           <div>
@@ -345,5 +360,53 @@ function ArButton({ glb, title }: { glb: string; title: string }) {
         {can === false ? "View in your room (on phone)" : "View in your room"}
       </button>
     </>
+  );
+}
+
+// Shown under the live build: a pre-generated model to play with while waiting,
+// with a compact progress line so the wait stays visible.
+function WhileYouWait({
+  examples, timer, step, progress, onJumpBack,
+}: { examples: ModelRecord[]; timer: string; step: string; progress: number; onJumpBack: () => void }) {
+  const list = examples.filter((m) => m.glb);
+  const [i, setI] = useState(0);
+  const m = list[i % list.length];
+  if (!m) return null;
+  const go = (d: number) => setI((x) => (x + d + list.length) % list.length);
+  return (
+    <div className="wait-card card">
+      <div className="wait-head">
+        <div>
+          <div style={{ fontWeight: 700 }}>While Lux3D works on yours, spin one we built earlier</div>
+          <div className="muted" style={{ fontSize: 13 }}>Drag to rotate, pinch or scroll to zoom — this is exactly what you’ll get.</div>
+        </div>
+        <button className="wait-progress" onClick={onJumpBack} title="Back to your build">
+          <span className="wait-dot" />
+          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontWeight: 600 }}>{timer}</span>
+          <span className="wait-step">{step}</span>
+          <span className="wait-bar"><span style={{ width: `${Math.round(progress * 100)}%` }} /></span>
+        </button>
+      </div>
+      <div className="wait-body">
+        <div className="wait-viewer">
+          <ProductViewer key={m.id} src={m.glb!} usdz={m.usdz} alt={m.title} poster={m.image} />
+          <span className="pill" style={{ position: "absolute", left: 12, top: 12 }}>Example · built earlier</span>
+        </div>
+        <div className="wait-side">
+          {m.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={m.image.startsWith("https://cdn.shopify.com") ? `${m.image}${m.image.includes("?") ? "&" : "?"}width=300` : m.image} alt="" className="wait-photo" />
+          )}
+          <div className="faint" style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em" }}>BUILT FROM THIS PHOTO</div>
+          <div style={{ fontWeight: 600, fontSize: 14, marginTop: 4 }}>{m.title}</div>
+          <div className="faint" style={{ fontSize: 13 }}>{m.domain === "demo" ? "Lux3D sample" : m.domain?.replace(/^www\./, "")}</div>
+          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+            <button className="btn btn-sm" onClick={() => go(-1)} aria-label="Previous example">←</button>
+            <span className="faint" style={{ fontSize: 13, alignSelf: "center" }}>{(i % list.length) + 1} / {list.length}</span>
+            <button className="btn btn-sm" onClick={() => go(1)} aria-label="Next example">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
