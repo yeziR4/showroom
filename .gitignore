@@ -5,3 +5,4 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 data/cache.json
+dist-modelscope

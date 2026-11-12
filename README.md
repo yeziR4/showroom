@@ -75,6 +75,20 @@ dependency on Google or jsDelivr: fonts and the `<model-viewer>` script are
 served from the app itself, and the image is built from ModelScope's base image
 with Node and npm packages from npmmirror.
 
+**No Chinese phone / real-name verification? Use a Gradio Studio instead.**
+Only Docker Studios need real-name verification. A Gradio Studio just runs
+`python app.py` on port 7860, and `deploy/modelscope/app.py` uses that to
+download Node.js from npmmirror and start the prebuilt app:
+
+```bash
+./scripts/build-modelscope.sh        # builds dist-modelscope/ (~25 MB)
+```
+
+Create a Studio with SDK **Gradio**, push the contents of `dist-modelscope/` to
+its git repo, add the environment variables below and launch.
+
+**With real-name verification**, a Docker Studio can build from `Dockerfile`:
+
 1. On modelscope.cn: bind an Alibaba Cloud account with real-name verification
    (required for Docker Studios), then create a Studio with SDK **Docker**.
 2. Push this repository to the Studio's git repo (it builds `Dockerfile`).
