@@ -67,6 +67,22 @@ https://<your-site>/api/admin/hide?id=<model id>&key=<ADMIN_KEY>
 
 Add `&undo=1` to bring it back. Model ids are in `/api/models`.
 
+## Deploy on ModelScope Studio (reachable from mainland China)
+
+`*.vercel.app` is blocked in mainland China, so the same app also ships as a
+Docker image for a ModelScope **Docker Studio**. The app has no runtime
+dependency on Google or jsDelivr: fonts and the `<model-viewer>` script are
+served from the app itself, and the image is built from ModelScope's base image
+with Node and npm packages from npmmirror.
+
+1. On modelscope.cn: bind an Alibaba Cloud account with real-name verification
+   (required for Docker Studios), then create a Studio with SDK **Docker**.
+2. Push this repository to the Studio's git repo (it builds `Dockerfile`).
+3. In the Studio's Settings → environment variables, add `AHOLO_API_KEY`, and
+   optionally `KV_REST_API_URL` + `KV_REST_API_TOKEN` (same Upstash Redis as
+   Vercel, so both sites share one showcase) and `ADMIN_KEY`.
+4. Launch. The app listens on port 7860 and keeps its data in `/mnt/workspace`.
+
 ## How it works
 
 1. `lib/shopify.ts` reads a store's public `/products.json` feed.

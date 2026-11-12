@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter, Fraunces } from "next/font/google";
+import localFont from "next/font/local";
 import Nav from "@/components/Nav";
 import "./globals.css";
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
+// Fonts and the 3D viewer are served from this site, not from Google / a CDN,
+// so the app also works where those are blocked (e.g. mainland China).
+const sans = localFont({ src: "./fonts/inter-normal-latin.woff2", weight: "400 700", variable: "--font-sans", display: "swap" });
+const display = localFont({
+  src: [
+    { path: "./fonts/fraunces-normal-latin.woff2", weight: "400 700", style: "normal" },
+    { path: "./fonts/fraunces-italic-latin.woff2", weight: "400 700", style: "italic" },
+  ],
+  variable: "--font-display",
+  display: "swap",
+});
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://showroom-flax-two.vercel.app";
 const TITLE = "Showroom — one photo to a 3D product";
@@ -28,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Script
           type="module"
-          src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"
+          src="/vendor/model-viewer-3.5.0.min.js"
           strategy="afterInteractive"
         />
         <Nav />

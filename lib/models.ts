@@ -49,7 +49,8 @@ const CATALOG: Record<string, ModelRecord> = Object.fromEntries(
 // Production (Vercel): Upstash Redis. Local dev: a JSON file.
 const HASH = "showroom:models";
 
-const CACHE_FILE = path.join(process.cwd(), "data", "cache.json");
+// DATA_DIR lets a host point this at persistent storage (ModelScope: /mnt/workspace).
+const CACHE_FILE = path.join(process.env.DATA_DIR ?? path.join(process.cwd(), "data"), "cache.json");
 let fileMem: Record<string, ModelRecord> | null = null;
 
 async function fileLoad(): Promise<Record<string, ModelRecord>> {
