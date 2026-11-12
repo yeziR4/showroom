@@ -6,8 +6,12 @@ import type { Product } from "./shopify";
 
 export type { ModelRecord, Product };
 
+// Set at build time when the app is served under a sub-path (ModelScope: "/app").
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+export const withBase = (path: string) => (path.startsWith("/") ? BASE_PATH + path : path);
+
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await fetch(withBase(url), init);
   const body = await res.json();
   if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
   return body as T;

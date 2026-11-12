@@ -1,1 +1,2 @@
-# Nothing to install: app.py downloads Node.js and starts the prebuilt Next.js server.
+# gradio, fastapi, httpx and uvicorn come with the Studio's Gradio SDK.
+# app.py downloads Node.js and starts the prebuilt Next.js server itself.

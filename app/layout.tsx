@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Script
           type="module"
-          src="/vendor/model-viewer-3.5.0.min.js"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/vendor/model-viewer-3.5.0.min.js`}
           strategy="afterInteractive"
         />
         <Nav />

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ProductViewer from "./ProductViewer";
-import type { ModelRecord } from "@/lib/client";
+import { withBase, type ModelRecord } from "@/lib/client";
 
 const PAGE = 12;
 
@@ -52,7 +52,7 @@ export default function Showcase({ initial, total: initialTotal }: { initial: Mo
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const r = await fetch(`/api/models?limit=${PAGE}`).then((x) => x.json());
+        const r = await fetch(withBase(`/api/models?limit=${PAGE}`)).then((x) => x.json());
         mergeNew(r.models.filter((m: ModelRecord) => !m.example), r.total);
       } catch { /* ignore */ }
     }, 20000);
@@ -74,7 +74,7 @@ export default function Showcase({ initial, total: initialTotal }: { initial: Mo
   async function more() {
     setLoading(true);
     try {
-      const r = await fetch(`/api/models?limit=${PAGE}&offset=${items.length}`).then((x) => x.json());
+      const r = await fetch(withBase(`/api/models?limit=${PAGE}&offset=${items.length}`)).then((x) => x.json());
       const have = new Set(items.map((m) => m.id));
       setItems((cur) => [...cur, ...r.models.filter((m: ModelRecord) => !have.has(m.id))]);
       setTotal(r.total);

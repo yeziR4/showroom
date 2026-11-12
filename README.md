@@ -76,9 +76,12 @@ served from the app itself, and the image is built from ModelScope's base image
 with Node and npm packages from npmmirror.
 
 **No Chinese phone / real-name verification? Use a Gradio Studio instead.**
-Only Docker Studios need real-name verification. A Gradio Studio just runs
-`python app.py` on port 7860, and `deploy/modelscope/app.py` uses that to
-download Node.js from npmmirror and start the prebuilt app:
+Only Docker Studios need real-name verification. In a Gradio Studio, ModelScope
+shows its own Gradio front-end at `/` (it fetches `/config` from the app) and
+passes every other path through to port 7860. `deploy/modelscope/app.py` runs a
+tiny real Gradio app whose page is a full-screen frame of Showroom at `/app`,
+proxies `/app/*` to the Next.js server (built with `NEXT_PUBLIC_BASE_PATH=/app`),
+and downloads Node.js + the runtime libraries from npmmirror on first start:
 
 ```bash
 ./scripts/build-modelscope.sh        # builds dist-modelscope/ (~25 MB)

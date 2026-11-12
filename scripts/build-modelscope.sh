@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=dist-modelscope
-npx next build
+NEXT_PUBLIC_BASE_PATH=/app npx next build
 mkdir -p "$OUT"
 # Replace previous bundle contents (keep the folder, which may be a git clone).
 find "$OUT" -mindepth 1 -maxdepth 1 ! -name .git ! -name .gitattributes ! -name README.md -exec rm -rf {} +

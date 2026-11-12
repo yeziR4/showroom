@@ -1,10 +1,14 @@
 """
-ModelScope Studio entry point (Gradio/Python SDK — no Docker, no real-name step).
+ModelScope Studio entry point (Gradio SDK — no Docker, no real-name step).
 
-ModelScope runs `python app.py` and shows whatever listens on port 7860.
-This script fetches a Node.js runtime from the npmmirror China mirror (once,
-cached), then replaces itself with the prebuilt Next.js server that sits next
-to it (`server.js`, `.next/`, `public/`) — the exact app that runs on Vercel.
+How ModelScope serves a Gradio Studio: its own Gradio front-end is shown at "/"
+and asks this server for the Gradio config; every other path is passed through
+to this server on port 7860. So this file runs a real (tiny) Gradio app whose
+only content is a full-screen frame showing Showroom at /app/, and proxies
+/app/* to the Next.js server (the same app as on Vercel, built with
+basePath=/app) running on 127.0.0.1:3000. Node.js and the Next.js runtime
+libraries are fetched from the npmmirror China mirror on first start and
+cached on the persistent /mnt/workspace volume.
 
 Set these in the Studio's Settings → environment variables:
   AHOLO_API_KEY            required
@@ -151,79 +155,100 @@ def runnable_dir(app_dir: str) -> str:
         return target
 
 
-class Placeholder:
-    """Answers on port 7860 straight away ("Starting…", HTTP 200) while Node.js
-    and the libraries download, so the platform's health check passes. It is
-    shut down right before the real server takes the port."""
+NODE_PORT = 3000
+BASE = "/app"
+_state = {"ready": False, "error": None}
 
-    PAGE = (b"<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=5>"
-            b"<title>Showroom is starting</title><body style='font:18px system-ui;background:#f3efe8;"
-            b"color:#17140f;display:grid;place-items:center;height:100vh;margin:0'>"
-            b"<div style='text-align:center'><b>Showroom is starting up</b><br>"
-            b"<span style='color:#6b6457'>First start takes about a minute. This page refreshes itself.</span></div>")
-
-    def __init__(self) -> None:
-        import http.server
-        import threading
-
-        page = self.PAGE
-
-        class Handler(http.server.BaseHTTPRequestHandler):
-            def _send(self, body: bool) -> None:
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(page)))
-                self.end_headers()
-                if body:
-                    self.wfile.write(page)
-
-            def do_GET(self):  # noqa: N802
-                self._send(True)
-
-            def do_HEAD(self):  # noqa: N802
-                self._send(False)
-
-            def log_message(self, *args):  # keep the runtime log readable
-                pass
-
-        http.server.ThreadingHTTPServer.allow_reuse_address = True
-        self.server = http.server.ThreadingHTTPServer(("0.0.0.0", 7860), Handler)
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        log("placeholder page is up on port 7860")
-
-    def stop(self) -> None:
-        self.server.shutdown()
-        self.server.server_close()
+STARTING_PAGE = """<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=4>
+<title>Showroom is starting</title><body style="font:17px system-ui;background:#f3efe8;color:#17140f;
+display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center;max-width:420px">
+<b>Showroom is starting up…</b><br><span style="color:#6b6457">{msg}</span></div>"""
 
 
-def main() -> None:
-    try:
-        placeholder = Placeholder()
-    except OSError as e:
-        log(f"could not start placeholder: {e}")
-        placeholder = None
+def start_node() -> None:
+    """Runs in a background thread: prepare Node + libraries, start Next.js."""
+    import threading  # noqa: F401
+    import time
+
     try:
         node = node_binary()
         app_dir = runnable_dir(unpack_bundle())
         ensure_node_modules(app_dir, node)
-    except BaseException as e:
+        env = dict(os.environ)
+        env.update({
+            "PORT": str(NODE_PORT), "HOSTNAME": "127.0.0.1", "NODE_ENV": "production",
+            "NEXT_TELEMETRY_DISABLED": "1",
+            "DATA_DIR": env.get("DATA_DIR") or writable_dir("/mnt/workspace/showroom", "/tmp/showroom"),
+        })
+        if not env.get("AHOLO_API_KEY"):
+            log("WARNING: AHOLO_API_KEY is not set — browsing works, building 3D models will fail")
+        log(f"starting Next.js with {node} on 127.0.0.1:{NODE_PORT}")
+        proc = subprocess.Popen([node, "server.js"], cwd=app_dir, env=env)
+        for _ in range(240):
+            if proc.poll() is not None:
+                raise RuntimeError(f"Next.js exited with code {proc.returncode}")
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{NODE_PORT}{BASE}/api/quota", timeout=2)
+                _state["ready"] = True
+                log("Showroom is ready")
+                return
+            except Exception:
+                time.sleep(0.5)
+        raise RuntimeError("Next.js did not become ready in 2 minutes")
+    except BaseException as e:  # shown on the starting page and in the log
+        _state["error"] = repr(e)
         log(f"startup failed: {e!r}")
-        raise
-    if placeholder:
-        placeholder.stop()
-    env = dict(os.environ)
-    env.update({
-        "PORT": "7860",
-        "HOSTNAME": "0.0.0.0",
-        "NODE_ENV": "production",
-        "NEXT_TELEMETRY_DISABLED": "1",
-        "DATA_DIR": env.get("DATA_DIR") or writable_dir("/mnt/workspace/showroom", os.path.join(HERE, "data-runtime"), "/tmp/showroom"),
-    })
-    if not env.get("AHOLO_API_KEY"):
-        log("WARNING: AHOLO_API_KEY is not set — browsing works, building 3D models will fail")
-    log(f"starting Showroom with {node} on port 7860")
-    os.chdir(app_dir)
-    os.execve(node, [node, "server.js"], env)
+
+
+def build_app():
+    import threading
+
+    import gradio as gr
+    import httpx
+    from fastapi import FastAPI, Request
+    from fastapi.responses import HTMLResponse, Response
+
+    threading.Thread(target=start_node, daemon=True).start()
+
+    app = FastAPI()
+    client = httpx.AsyncClient(base_url=f"http://127.0.0.1:{NODE_PORT}", timeout=120)
+    hop = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade",
+           "proxy-authorization", "proxy-authenticate", "content-encoding", "content-length", "host"}
+
+    methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+
+    @app.api_route(BASE, methods=methods)
+    async def app_root(request: Request):
+        return await proxy("", request)
+
+    @app.api_route(BASE + "/{path:path}", methods=methods)
+    async def proxy(path: str, request: Request):
+        if not _state["ready"]:
+            msg = f"Something went wrong: {_state['error']}" if _state["error"] else \
+                "First start downloads Node.js and takes about a minute. This page refreshes itself."
+            return HTMLResponse(STARTING_PAGE.format(msg=msg), status_code=503)
+        # Next.js (basePath=/app) serves the home page at "/app", not "/app/".
+        url = (f"{BASE}/{path}" if path else BASE) + (f"?{request.url.query}" if request.url.query else "")
+        headers = {k: v for k, v in request.headers.items() if k.lower() not in hop}
+        headers["x-forwarded-for"] = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+        r = await client.request(request.method, url, headers=headers, content=await request.body())
+        out = {k: v for k, v in r.headers.items() if k.lower() not in hop}
+        return Response(content=r.content, status_code=r.status_code, headers=out)
+
+    frame = (
+        f'<iframe src="{BASE}" title="Showroom" allow="xr-spatial-tracking; fullscreen; clipboard-write" '
+        'style="width:100%;height:calc(100vh - 24px);min-height:720px;border:0;border-radius:12px;display:block"></iframe>'
+    )
+    with gr.Blocks(title="Showroom — one photo to a 3D product") as demo:
+        gr.HTML(frame)
+    return gr.mount_gradio_app(app, demo, path="/")
+
+
+def main() -> None:
+    import uvicorn
+
+    log("starting Gradio front on 0.0.0.0:7860")
+    uvicorn.run(build_app(), host="0.0.0.0", port=7860, log_level="warning")
 
 
 if __name__ == "__main__":
