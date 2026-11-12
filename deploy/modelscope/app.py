@@ -151,10 +151,66 @@ def runnable_dir(app_dir: str) -> str:
         return target
 
 
+class Placeholder:
+    """Answers on port 7860 straight away ("Starting…", HTTP 200) while Node.js
+    and the libraries download, so the platform's health check passes. It is
+    shut down right before the real server takes the port."""
+
+    PAGE = (b"<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=5>"
+            b"<title>Showroom is starting</title><body style='font:18px system-ui;background:#f3efe8;"
+            b"color:#17140f;display:grid;place-items:center;height:100vh;margin:0'>"
+            b"<div style='text-align:center'><b>Showroom is starting up</b><br>"
+            b"<span style='color:#6b6457'>First start takes about a minute. This page refreshes itself.</span></div>")
+
+    def __init__(self) -> None:
+        import http.server
+        import threading
+
+        page = self.PAGE
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def _send(self, body: bool) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                if body:
+                    self.wfile.write(page)
+
+            def do_GET(self):  # noqa: N802
+                self._send(True)
+
+            def do_HEAD(self):  # noqa: N802
+                self._send(False)
+
+            def log_message(self, *args):  # keep the runtime log readable
+                pass
+
+        http.server.ThreadingHTTPServer.allow_reuse_address = True
+        self.server = http.server.ThreadingHTTPServer(("0.0.0.0", 7860), Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        log("placeholder page is up on port 7860")
+
+    def stop(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
 def main() -> None:
-    node = node_binary()
-    app_dir = runnable_dir(unpack_bundle())
-    ensure_node_modules(app_dir, node)
+    try:
+        placeholder = Placeholder()
+    except OSError as e:
+        log(f"could not start placeholder: {e}")
+        placeholder = None
+    try:
+        node = node_binary()
+        app_dir = runnable_dir(unpack_bundle())
+        ensure_node_modules(app_dir, node)
+    except BaseException as e:
+        log(f"startup failed: {e!r}")
+        raise
+    if placeholder:
+        placeholder.stop()
     env = dict(os.environ)
     env.update({
         "PORT": "7860",
