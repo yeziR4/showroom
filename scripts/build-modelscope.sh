@@ -17,3 +17,10 @@ rm -rf "$OUT/node_modules/@img" "$OUT/node_modules/sharp"
 # Never ship local secrets or caches.
 rm -f "$OUT/.env" "$OUT"/.env*.local "$OUT/data/cache.json"
 du -sh "$OUT"
+
+# Web-upload variant: just three files (app.py, requirements.txt, one zip).
+UP=dist-modelscope-upload
+rm -rf "$UP" && mkdir -p "$UP"
+(cd "$OUT" && zip -qr -X "../$UP/showroom-app.zip" . -x "app.py" "requirements.txt" ".git/*" ".gitattributes" "README.md")
+cp "$OUT/app.py" "$OUT/requirements.txt" "$UP/"
+ls -la "$UP"

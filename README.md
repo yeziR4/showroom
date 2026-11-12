@@ -84,8 +84,11 @@ download Node.js from npmmirror and start the prebuilt app:
 ./scripts/build-modelscope.sh        # builds dist-modelscope/ (~25 MB)
 ```
 
-Create a Studio with SDK **Gradio**, push the contents of `dist-modelscope/` to
-its git repo, add the environment variables below and launch.
+Create a Studio with SDK **Gradio**, then either push the contents of
+`dist-modelscope/` to its git repo, or — simplest — upload the three files in
+`dist-modelscope-upload/` (`app.py`, `requirements.txt`, `showroom-app.zip`,
+~5 MB) through the Studio's web uploader; `app.py` unpacks the zip on start.
+Add the environment variables below and launch.
 
 **With real-name verification**, a Docker Studio can build from `Dockerfile`:
 

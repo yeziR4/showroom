@@ -79,7 +79,29 @@ def node_binary() -> str:
     sys.exit("[showroom] could not download Node.js from any mirror")
 
 
+def unpack_bundle() -> str:
+    """Return the folder holding server.js. If the app was uploaded as a single
+    zip (easier through the web uploader), extract it once and use that."""
+    if os.path.exists(os.path.join(HERE, "server.js")):
+        return HERE
+    archive = os.path.join(HERE, "showroom-app.zip")
+    if not os.path.exists(archive):
+        sys.exit("[showroom] neither server.js nor showroom-app.zip found next to app.py")
+    stamp = str(os.path.getsize(archive)) + "-" + str(int(os.path.getmtime(archive)))
+    target = os.path.join(writable_dir(os.path.join(HERE, "_app"), "/tmp/showroom-app"), "")
+    marker = os.path.join(target, ".unpacked")
+    if not (os.path.exists(marker) and open(marker).read() == stamp):
+        import zipfile
+        log("unpacking showroom-app.zip …")
+        with zipfile.ZipFile(archive) as z:
+            z.extractall(target)
+        with open(marker, "w") as f:
+            f.write(stamp)
+    return target
+
+
 def main() -> None:
+    app_dir = unpack_bundle()
     node = node_binary()
     env = dict(os.environ)
     env.update({
@@ -87,12 +109,12 @@ def main() -> None:
         "HOSTNAME": "0.0.0.0",
         "NODE_ENV": "production",
         "NEXT_TELEMETRY_DISABLED": "1",
-        "DATA_DIR": env.get("DATA_DIR") or writable_dir("/mnt/workspace/showroom", os.path.join(HERE, "data"), "/tmp/showroom"),
+        "DATA_DIR": env.get("DATA_DIR") or writable_dir("/mnt/workspace/showroom", os.path.join(HERE, "data-runtime"), "/tmp/showroom"),
     })
     if not env.get("AHOLO_API_KEY"):
         log("WARNING: AHOLO_API_KEY is not set — browsing works, building 3D models will fail")
     log(f"starting Showroom with {node} on port 7860")
-    os.chdir(HERE)
+    os.chdir(app_dir)
     os.execve(node, [node, "server.js"], env)
 
 
