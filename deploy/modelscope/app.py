@@ -100,9 +100,61 @@ def unpack_bundle() -> str:
     return target
 
 
+# Runtime libraries of the standalone server. ModelScope's web uploader drops
+# node_modules folders, so they are installed from npmmirror on first start
+# and cached on the persistent volume.
+RUNTIME_DEPS = ["next@16.4.5", "react@19.3.1", "react-dom@19.3.1"]
+NPM_REGISTRY = "https://registry.npmmirror.com"
+
+
+def ensure_node_modules(app_dir: str, node: str) -> None:
+    if os.path.exists(os.path.join(app_dir, "node_modules", "next", "package.json")):
+        return
+    key = "-".join(d.replace("@", "_").replace("/", "_") for d in RUNTIME_DEPS)
+    cache = os.path.join(writable_dir("/mnt/workspace/.showroom-modules", "/tmp/showroom-modules"), key)
+    if not os.path.exists(os.path.join(cache, "node_modules", "next", "package.json")):
+        os.makedirs(cache, exist_ok=True)
+        with open(os.path.join(cache, "package.json"), "w") as f:
+            f.write('{"name":"showroom-runtime","private":true}')
+        npm = os.path.join(os.path.dirname(node), "npm")
+        env = dict(os.environ, PATH=os.path.dirname(node) + os.pathsep + os.environ.get("PATH", ""))
+        log(f"installing {', '.join(RUNTIME_DEPS)} from {NPM_REGISTRY} …")
+        subprocess.check_call(
+            [npm, "install", *RUNTIME_DEPS, "--registry", NPM_REGISTRY, "--omit=optional",
+             "--no-audit", "--no-fund", "--no-package-lock", "--loglevel=error"],
+            cwd=cache, env=env,
+        )
+    link = os.path.join(app_dir, "node_modules")
+    if os.path.islink(link) or os.path.exists(link):
+        if os.path.islink(link):
+            os.remove(link)
+        else:
+            shutil.rmtree(link)
+    try:
+        os.symlink(os.path.join(cache, "node_modules"), link)
+    except OSError:
+        shutil.copytree(os.path.join(cache, "node_modules"), link)
+
+
+def runnable_dir(app_dir: str) -> str:
+    """The app folder must be writable (node_modules link, Next cache). If the
+    Studio checkout is read-only, run from a copy in a writable place."""
+    try:
+        probe = os.path.join(app_dir, ".write-probe")
+        open(probe, "w").close()
+        os.remove(probe)
+        return app_dir
+    except OSError:
+        target = "/tmp/showroom-run"
+        if not os.path.exists(os.path.join(target, "server.js")):
+            shutil.copytree(app_dir, target, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "node_modules"))
+        return target
+
+
 def main() -> None:
-    app_dir = unpack_bundle()
     node = node_binary()
+    app_dir = runnable_dir(unpack_bundle())
+    ensure_node_modules(app_dir, node)
     env = dict(os.environ)
     env.update({
         "PORT": "7860",
