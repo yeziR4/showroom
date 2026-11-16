@@ -27,7 +27,7 @@ export type ModelRecord = {
   updatedAt: number;
   error?: string;
   example?: boolean; // pre-generated demo model from data/catalog.json
-  public?: boolean; // visitor uploads: shown in the showcase unless the visitor opted out
+  public?: boolean; // visitor uploads: shown in the showcase only if the visitor opted in
   hidden?: boolean; // removed from the showcase by the site owner
 };
 
@@ -35,7 +35,7 @@ export type ModelRecord = {
 export function isShowcased(r: ModelRecord): boolean {
   if (r.status !== "succeeded" || !r.glb || r.hidden) return false;
   if (r.kind === "variant") return false;
-  if (r.kind === "photo") return r.public !== false;
+  if (r.kind === "photo") return r.public === true; // visitors opt in explicitly
   return true;
 }
 
@@ -63,9 +63,22 @@ async function fileLoad(): Promise<Record<string, ModelRecord>> {
   return fileMem!;
 }
 
+import overridesJson from "@/data/showcase-overrides.json";
+
+// Committed curation (data/showcase-overrides.json): hide entries or replace an
+// upload filename with a readable product name — works without database access.
+const OVERRIDES = overridesJson as unknown as Record<string, { hidden?: boolean; title?: string }>;
+
+function applyOverride(r: ModelRecord): ModelRecord {
+  const o = OVERRIDES[r.id];
+  if (!o || typeof o !== "object") return r;
+  return { ...r, ...(o.title ? { title: o.title } : {}), ...(o.hidden ? { hidden: true } : {}) };
+}
+
 // Stored copies of catalog models (e.g. after being hidden) stay labelled as examples.
 function withExampleFlags(all: Record<string, ModelRecord>) {
   for (const id of Object.keys(CATALOG)) if (all[id]) all[id] = { ...all[id], example: true };
+  for (const id of Object.keys(all)) all[id] = applyOverride(all[id]);
   return all;
 }
 
@@ -82,9 +95,11 @@ async function loadAll(): Promise<Record<string, ModelRecord>> {
 export async function getRecord(id: string): Promise<ModelRecord | undefined> {
   if (hasRedis) {
     const v = await redis<string | null>(["HGET", HASH, id]);
-    return v ? JSON.parse(v) : CATALOG[id];
+    const r = v ? JSON.parse(v) : CATALOG[id];
+    return r ? applyOverride(r) : r;
   }
-  return (await fileLoad())[id] ?? CATALOG[id];
+  const r = (await fileLoad())[id] ?? CATALOG[id];
+  return r ? applyOverride(r) : r;
 }
 
 export async function putRecord(rec: ModelRecord): Promise<ModelRecord> {

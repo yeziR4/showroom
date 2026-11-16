@@ -1,0 +1,12 @@
+{
+  "_note": "Curation of the public showcase without database access. hidden: removed from the showcase; title: display name shown instead of the upload filename.",
+  "photo/73c6e8ab375eda8e": { "hidden": true, "reason": "photo of a person, shared before sharing became opt-in" },
+  "photo/33c313155e7cc6cf": { "hidden": true, "reason": "artwork, not a product" },
+  "photo/461ba3e5a8805fe3": { "hidden": true, "reason": "duplicate test build of the blue kettle" },
+  "photo/228e072ebfb4fead": { "hidden": true, "reason": "duplicate test build of the blue kettle" },
+  "photo/5d180553a15313a4": { "hidden": true, "reason": "duplicate test build of the blue kettle" },
+  "photo/f832387205473653": { "title": "Stagg EKG Kettle — Blueberry" },
+  "photo/078adccaf2120eeb": { "title": "Loop Earplugs — Lime" },
+  "photo/dd43476d772aa6fd": { "title": "Enamel Dutch Oven — Red" },
+  "www.mvmt.com/divers-watch-nigel-cabourn-40mm": { "hidden": true, "reason": "low-quality model (strap reconstructed as a ring)" }
+}

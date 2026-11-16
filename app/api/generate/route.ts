@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       const taskId = await createImageTo3D([url], "turbo");
       const rec = await putRecord({
         id, kind: "photo", taskId, status: "queued", title: (body.title ?? "").trim().slice(0, 80) || "Your product",
-        image: url, public: body.public !== false, createdAt: Date.now(), updatedAt: Date.now(),
+        image: url, public: body.public === true, createdAt: Date.now(), updatedAt: Date.now(),
       });
       return NextResponse.json({ record: rec });
     }

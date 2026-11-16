@@ -44,6 +44,17 @@ async function prepareImage(file: File): Promise<string> {
   }
 }
 
+// Turn an upload filename into a readable product name; camera-style names
+// ("IMG_4412", "PXL_2026…", "Screenshot 2026-…", hashes) become "Untitled product".
+export function productNameFromFile(filename: string): string {
+  const base = filename.replace(/\.[^.]+$/, "").replace(/[-_.]+/g, " ").replace(/\s+/g, " ").trim();
+  const junk = /^(img|image|dsc|dscn|pxl|photo|pic|screenshot|screen shot|whatsapp image|mvimg|cimg|p\d+)\b/i.test(base)
+    || /^[\d\s]+$/.test(base) || /^[0-9a-f\s]{12,}$/i.test(base) || base.length < 3;
+  if (junk) return "Untitled product";
+  const words = base.slice(0, 60).split(" ");
+  return words.map((w, i) => (i === 0 || w.length > 3 ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
+}
+
 function fmt(ms: number) {
   const s = ms / 1000;
   const m = Math.floor(s / 60);
@@ -67,7 +78,11 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   const [now, setNow] = useState(Date.now());
   const [drag, setDrag] = useState(false);
   const [tip, setTip] = useState(0);
-  const [share, setShare] = useState(true);
+  // Sharing to the public showcase is opt-in; the name is what the showcase shows.
+  const [share, setShare] = useState(false);
+  const [name, setName] = useState("");
+  const nameRef = useRef(name);
+  nameRef.current = name;
   const [modelError, setModelError] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -130,7 +145,7 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
       return;
     }
     setRevealed(false);
-    const title = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 60);
+    const title = nameRef.current.trim().slice(0, 60) || productNameFromFile(file.name);
     const started = Date.now();
     setJob({ image, title, phase: "uploading", started, replay: false });
     try {
@@ -200,10 +215,17 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
             {pickError}
           </div>
         )}
-        <label className="muted" style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginTop: 10 }}>
-          <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-          Add my model to the public showcase
-        </label>
+        <div className="upload-opts">
+          <label className="upload-name">
+            <span className="faint">Product name</span>
+            <input className="input" value={name} maxLength={60} onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Blue enamel kettle (optional)" />
+          </label>
+          <label className="muted upload-share">
+            <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+            <span>Share my model in the public showcase <span className="faint">(off by default)</span></span>
+          </label>
+        </div>
         {examples.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <div className="faint" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>NO PHOTO HANDY? REPLAY ONE BUILT EARLIER</div>
