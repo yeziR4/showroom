@@ -35,16 +35,21 @@ function Pedestal({ item, position, onSelect, active }: { item: ShowroomItem; po
         onPointerOut={() => { setHover(false); document.body.style.cursor = ""; }}
         onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <cylinderGeometry args={[0.66, 0.7, 0.5, 64]} />
-        <meshStandardMaterial color={hover || active ? "#ffffff" : "#f7f2ea"} roughness={0.25} />
+        <meshStandardMaterial color={hover || active ? "#4a4a56" : "#34343f"} roughness={0.35} metalness={0.15} />
+      </mesh>
+      {/* glowing rim on top of the pedestal */}
+      <mesh position={[0, 0.505, 0]} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[0.6, 0.66, 64]} />
+        <meshBasicMaterial color="#ff6a2b" transparent opacity={hover || active ? 0.95 : 0.55} toneMapped={false} />
       </mesh>
       <group ref={spin} position={[0, 0.5, 0]} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <Suspense fallback={<mesh position={[0, 0.3, 0]}><boxGeometry args={[0.3, 0.3, 0.3]} /><meshStandardMaterial color="#ddd" wireframe /></mesh>}>
           <NormalizedModel url={item.glb} size={1.15} />
         </Suspense>
       </group>
-      <pointLight position={[0, 2.6, 0.6]} intensity={hover || active ? 9 : 5} distance={4} color="#fff4e6" />
+      <pointLight position={[0, 2.6, 0.6]} intensity={hover || active ? 12 : 7} distance={4} color="#fff0e0" />
       <Html position={[0, 0.12, 0.78]} center zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-        <div style={{ background: "rgba(255,255,255,.92)", color: "#17140f", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 14px rgba(0,0,0,.12)" }}>
+        <div style={{ background: "rgba(14,14,20,.78)", color: "#f5f2ec", border: "1px solid rgba(255,255,255,.12)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 14px rgba(0,0,0,.12)" }}>
           {item.title}{item.price ? ` · $${Number(item.price).toFixed(0)}` : ""}
         </div>
       </Html>
@@ -64,23 +69,28 @@ export default function Showroom3D({ items, onSelect, activeId }: { items: Showr
 
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.9, 2.6 + width * 0.9], fov: 40 }} gl={{ preserveDrawingBuffer: true }}>
-      <color attach="background" args={["#f6efe4"]} />
-      <fog attach="fog" args={["#f6efe4", 8, 20]} />
-      <hemisphereLight args={["#fff8ee", "#e9dcc8", 1.1]} />
-      <spotLight position={[3, 7, 4]} angle={0.55} penumbra={0.8} intensity={90} castShadow shadow-mapSize={[1024, 1024]} color="#fff6ea" />
+      <color attach="background" args={["#08080c"]} />
+      <fog attach="fog" args={["#08080c", 7, 18]} />
+      <hemisphereLight args={["#fff1e2", "#2a2030", 1.2]} />
+      <spotLight position={[3, 7, 4]} angle={0.6} penumbra={0.8} intensity={160} castShadow shadow-mapSize={[1024, 1024]} color="#fff6ea" />
+      <directionalLight position={[-4, 3, -4]} intensity={2.5} color="#ffc9a8" />
+      <directionalLight position={[4, 2, -3]} intensity={2} color="#a9cfff" />
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <planeGeometry args={[60, 60]} />
-        <meshStandardMaterial color="#f1e9dc" roughness={0.8} />
+        <meshStandardMaterial color="#17171f" roughness={0.3} metalness={0.25} />
       </mesh>
       {/* back wall with a warm arch glow */}
       <mesh position={[0, 4, -6]} receiveShadow>
         <planeGeometry args={[60, 12]} />
-        <meshStandardMaterial color="#efe4d3" roughness={1} />
+        <meshStandardMaterial color="#0d0d13" roughness={1} />
       </mesh>
-      <mesh position={[0, 2.2, -5.95]}>
-        <circleGeometry args={[2.6, 64]} />
-        <meshBasicMaterial color="#ffd7b0" transparent opacity={0.45} />
-      </mesh>
+      {/* soft glow behind the pedestals: stacked translucent discs fake a radial gradient */}
+      {Array.from({ length: 14 }, (_, i) => 4.2 - i * 0.26).map((r, i) => (
+        <mesh key={i} position={[0, 2.0, -5.95 + i * 0.001]}>
+          <circleGeometry args={[r, 64]} />
+          <meshBasicMaterial color="#ff6a2b" transparent opacity={0.012} depthWrite={false} toneMapped={false} />
+        </mesh>
+      ))}
       {items.map((it, i) => (
         <Pedestal key={it.id} item={it} position={positions[i]} onSelect={() => onSelect(it.id)} active={activeId === it.id} />
       ))}

@@ -96,8 +96,8 @@ export default function Showcase({ initial, total: initialTotal }: { initial: Mo
       <div className="grid">
         {items.map((m) => (
           <div key={m.id} className={`card showcase-card${fresh.has(m.id) ? " is-new" : ""}`} style={{ overflow: "hidden" }}>
-            <div style={{ aspectRatio: "1/1", background: "var(--bg-2)", position: "relative" }}>
-              <ProductViewer src={m.glb!} alt={m.title} poster={m.image} ar={false} lazy />
+            <div className="mv-wrap" style={{ aspectRatio: "1/1", background: "var(--bg-2)", position: "relative" }}>
+              <ProductViewer src={m.glb!} alt={m.title} ar={false} lazy />
               <span className={`pill ${m.example ? "" : "pill-live"}`} style={{ position: "absolute", left: 10, top: 10 }}>{label(m)}</span>
               {fresh.has(m.id) && <span className="pill pill-accent" style={{ position: "absolute", right: 10, top: 10 }}>New</span>}
             </div>

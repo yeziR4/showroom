@@ -202,7 +202,7 @@ function LandedModel({ glb, revealAt, onLoaded }: { glb: string; revealAt: numbe
     g.current.rotation.y += dt * (t < 1.2 ? 2.2 * (1 - t / 1.2) + 0.25 : 0.25);
   });
   return (
-    <group ref={g} position={[0, -0.62, 0]} scale={0.0001}>
+    <group ref={g} position={[0, -0.5, 0]} scale={0.0001}>
       <NormalizedModel url={glb} size={1.7} />
     </group>
   );
@@ -220,7 +220,7 @@ function CameraFit() {
 }
 
 function Floor({ on }: { on: boolean }) {
-  return on ? <ContactShadows position={[0, -0.62, 0]} opacity={0.55} scale={6} blur={2.4} far={2} color="#000" /> : null;
+  return on ? <ContactShadows position={[0, -0.5, 0]} opacity={0.55} scale={6} blur={2.4} far={2} color="#000" /> : null;
 }
 
 // Catches a GLB that fails to download or parse, so the stage never hangs silently.

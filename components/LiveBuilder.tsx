@@ -6,6 +6,7 @@ import { api, type ModelRecord } from "@/lib/client";
 import ProductViewer from "./ProductViewer";
 import { useProgress } from "@react-three/drei";
 import type { BuildPhase } from "./BuildStage";
+import HeroLoop from "./HeroLoop";
 
 const BuildStage = dynamic(() => import("./BuildStage"), { ssr: false });
 
@@ -72,7 +73,7 @@ type Job = {
   error?: string;
 };
 
-export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
+export default function LiveBuilder({ examples, heroModels = [], intro }: { examples: ModelRecord[]; heroModels?: ModelRecord[]; intro?: React.ReactNode }) {
   const [job, setJob] = useState<Job | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -195,51 +196,57 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   // ---- idle: drop zone ----
   if (!job) {
     return (
-      <div>
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) start(f); }}
-          onClick={() => fileRef.current?.click()}
-          className="dropzone"
-          data-drag={drag || undefined}
-        >
-          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) start(f); }} />
-          <div className="drop-icon">⬆</div>
-          <div style={{ fontWeight: 700, fontSize: 20 }}>Drop a product photo</div>
-          <div className="muted" style={{ fontSize: 14 }}>or click to choose · or paste · JPG / PNG</div>
-          <div className="faint" style={{ fontSize: 12, marginTop: 10 }}>Best: one object, plain background. About a minute to build.</div>
-        </div>
-        {pickError && (
-          <div role="alert" style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "color-mix(in srgb, var(--accent) 10%, var(--card))", color: "var(--ink)", fontSize: 14 }}>
-            {pickError}
-          </div>
-        )}
-        <div className="upload-opts">
-          <label className="upload-name">
-            <span className="faint">Product name</span>
-            <input className="input" value={name} maxLength={60} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Blue enamel kettle (optional)" />
-          </label>
-          <label className="muted upload-share">
-            <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-            <span>Share my model in the public showcase <span className="faint">(off by default)</span></span>
-          </label>
-        </div>
-        {examples.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <div className="faint" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>NO PHOTO HANDY? REPLAY ONE BUILT EARLIER</div>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-              {examples.filter((m) => m.image).slice(0, 8).map((m) => (
-                <button key={m.id} onClick={() => replay(m)} className="card" title={m.title}
-                  style={{ padding: 0, width: 76, height: 76, flex: "0 0 auto", overflow: "hidden", background: "#fff" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.image!.startsWith("https://cdn.shopify.com") ? `${m.image}${m.image!.includes("?") ? "&" : "?"}width=200` : m.image} alt={m.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                </button>
-              ))}
+      <div className="hero" id="build">
+        <div className="hero-copy">
+          {intro}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) start(f); }}
+            onClick={() => fileRef.current?.click()}
+            className="dropzone"
+            data-drag={drag || undefined}
+          >
+            <input ref={fileRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) start(f); }} />
+            <div className="drop-icon" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4" /><path d="m6 10 6-6 6 6" /><path d="M4 20h16" /></svg>
             </div>
+            <div className="drop-text">
+              <div className="drop-title">Drop a product photo</div>
+              <div className="muted" style={{ fontSize: 14 }}>or click to choose · paste works too</div>
+              <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>One object, plain background · about a minute to build</div>
+            </div>
+            <span className="drop-go" aria-hidden>→</span>
           </div>
-        )}
+          {pickError && (
+            <div role="alert" className="pick-error">{pickError}</div>
+          )}
+          <div className="upload-opts">
+            <label className="upload-name">
+              <span className="faint">Product name</span>
+              <input className="input" value={name} maxLength={60} onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Blue enamel kettle (optional)" />
+            </label>
+            <label className="muted upload-share">
+              <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+              <span>Share in the public showcase <span className="faint">(off by default)</span></span>
+            </label>
+          </div>
+          {examples.length > 0 && (
+            <div className="replay-row">
+              <div className="faint replay-label">No photo handy? Replay one built earlier</div>
+              <div className="replay-strip">
+                {examples.filter((m) => m.image).slice(0, 8).map((m) => (
+                  <button key={m.id} onClick={() => replay(m)} className="replay-thumb" title={m.title}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.image!.startsWith("https://cdn.shopify.com") ? `${m.image}${m.image!.includes("?") ? "&" : "?"}width=200` : m.image} alt={m.title} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <HeroLoop models={heroModels.length ? heroModels : examples} />
       </div>
     );
   }
@@ -248,7 +255,8 @@ export default function LiveBuilder({ examples }: { examples: ModelRecord[] }) {
   const done = job.phase === "done";
   const glb = job.record?.glb;
   return (
-    <div>
+    <div id="build">
+      {intro && <div className="build-intro">{intro}</div>}
       <div className="build-grid">
         <div className="build-photo card">
           <div className="build-label">{job.replay ? "Product photo" : "Your photo"}</div>
