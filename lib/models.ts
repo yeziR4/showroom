@@ -67,12 +67,12 @@ import overridesJson from "@/data/showcase-overrides.json";
 
 // Committed curation (data/showcase-overrides.json): hide entries or replace an
 // upload filename with a readable product name — works without database access.
-const OVERRIDES = overridesJson as unknown as Record<string, { hidden?: boolean; title?: string }>;
+const OVERRIDES = overridesJson as unknown as Record<string, { hidden?: boolean; title?: string; public?: boolean }>;
 
 function applyOverride(r: ModelRecord): ModelRecord {
   const o = OVERRIDES[r.id];
   if (!o || typeof o !== "object") return r;
-  return { ...r, ...(o.title ? { title: o.title } : {}), ...(o.hidden ? { hidden: true } : {}) };
+  return { ...r, ...(o.title ? { title: o.title } : {}), ...(o.hidden ? { hidden: true } : {}), ...(o.public ? { public: true } : {}) };
 }
 
 // Stored copies of catalog models (e.g. after being hidden) stay labelled as examples.
