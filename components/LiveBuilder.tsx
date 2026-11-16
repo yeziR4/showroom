@@ -360,7 +360,7 @@ export default function LiveBuilder({ examples, heroModels = [], intro }: { exam
             <div className="muted" style={{ fontSize: 14 }}>Now put it to work:</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <ArButton glb={glb} title={job.title} />
+            {job.record && <ArButton id={job.record.id} />}
             {job.record && <Link className="btn btn-accent" href={`/studio/ad?id=${encodeURIComponent(job.record.id)}`}>Make a 3D video ad</Link>}
             <a className="btn" href={glb} download>Download GLB</a>
             <button className="btn btn-ghost" onClick={reset}>Build another</button>
@@ -371,26 +371,10 @@ export default function LiveBuilder({ examples, heroModels = [], intro }: { exam
   );
 }
 
-// Opens the phone's native AR viewer through a hidden <model-viewer>.
-function ArButton({ glb, title }: { glb: string; title: string }) {
-  const ref = useRef<HTMLElement & { activateAR?: () => void; canActivateAR?: boolean }>(null);
-  const [can, setCan] = useState<boolean | null>(null);
-  useEffect(() => {
-    const t = setTimeout(() => setCan(Boolean(ref.current?.canActivateAR)), 1500);
-    return () => clearTimeout(t);
-  }, [glb]);
-  return (
-    <>
-      {createElement("model-viewer", {
-        ref, src: glb, alt: title, ar: "", "ar-modes": "webxr scene-viewer quick-look", "ar-scale": "auto",
-        style: { position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" },
-      })}
-      <button className="btn btn-primary" onClick={() => ref.current?.activateAR?.()} disabled={can === false}
-        title={can === false ? "Open this page on a phone to place it in your room" : undefined}>
-        {can === false ? "View in your room (on phone)" : "View in your room"}
-      </button>
-    </>
-  );
+// "View in your room" opens the dedicated AR page: AR needs a visible
+// <model-viewer>, and laptops get a QR code to continue on a phone.
+function ArButton({ id }: { id: string }) {
+  return <Link className="btn btn-primary" href={`/ar?id=${encodeURIComponent(id)}`}>View in your room</Link>;
 }
 
 // Shown under the live build: a pre-generated model to play with while waiting,

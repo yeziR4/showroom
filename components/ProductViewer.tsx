@@ -1,5 +1,6 @@
 "use client";
 import { createElement } from "react";
+import { enableAr } from "@/lib/ar";
 
 // Thin wrapper around Google's <model-viewer> (loaded from CDN in the layout).
 // Gives orbit controls, auto-rotate and AR on phones: Scene Viewer on Android,
@@ -13,12 +14,13 @@ export default function ProductViewer({
   return createElement(
     "model-viewer",
     {
+      ref: ar ? (el: HTMLElement | null) => enableAr(el) : undefined,
       src,
       "ios-src": usdz,
       poster,
       alt,
       ar: ar ? "" : undefined,
-      "ar-modes": "webxr scene-viewer quick-look",
+      "ar-modes": "scene-viewer webxr quick-look",
       "ar-scale": "auto",
       "camera-controls": "",
       "auto-rotate": autoRotate ? "" : undefined,
