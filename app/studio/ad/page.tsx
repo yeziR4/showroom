@@ -101,6 +101,20 @@ function AdStudio() {
   const settings = useRef({ format, theme, duration, headline, price, cta });
   // ?freeze=0.8 pins the timeline (for thumbnails and visual checks).
   const freezeParam = params.get("freeze");
+  // ?render=1 exposes window.__adFrame(u) for frame-by-frame offline rendering
+  // (smooth exports on machines without a GPU). Not used by visitors.
+  const manualU = useRef<number | null>(null);
+  useEffect(() => {
+    if (params.get("render") !== "1") return;
+    const w = window as unknown as { __adFrame?: (u: number) => Promise<string> };
+    const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+    w.__adFrame = async (u: number) => {
+      manualU.current = u;
+      for (let i = 0; i < 4; i++) await nextFrame();
+      return out.current!.toDataURL("image/jpeg", 0.93);
+    };
+    return () => { delete w.__adFrame; };
+  }, [params]);
   const freeze = freezeParam !== null ? Number(freezeParam) : null;
   settings.current = { format, theme, duration, headline, price, cta };
 
@@ -138,7 +152,9 @@ function AdStudio() {
       const ctx = c.getContext("2d")!;
       const now = performance.now();
       let u: number;
-      if (freeze !== null) {
+      if (manualU.current !== null) {
+        u = manualU.current;
+      } else if (freeze !== null) {
         u = freeze;
       } else if (recState.current) {
         u = Math.min(1, (now - recState.current.startedAt) / 1000 / s.duration);
