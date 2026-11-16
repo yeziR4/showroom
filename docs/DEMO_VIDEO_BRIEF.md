@@ -38,7 +38,7 @@ The rules require the video to **include actual footage of the demo running**. E
 Hackathon reviewers (including the Aholo team) already praised the honest timings. Keep it that way:
 
 1. **Show one real build of a new photo**, start to finish. Don't use the "replay" examples as if they were live builds.
-2. **Real timings only.** A build takes **about a minute** (our single builds measured **52–76 s**; the blue kettle took **61.7 s**). Never say "instant" or "seconds".
+2. **Real timings only.** A build takes **about a minute** (our single builds measured **52–88 s, median ≈65 s**; the blue kettle took **61.7 s**, a ceramic dish **88.1 s**). Never say "instant" or "seconds".
 3. **If you speed anything up, label it on screen** (e.g. a "2× speed" badge). The on-screen timer in the app always shows real elapsed time — keep it visible so speed-ups stay honest.
 4. **Don't show fake data, fake reviews or invented numbers.** Facts you can use are in section 8.
 5. **AR ("View in your room") only works on a real phone.** Record it on a phone, or don't claim it on screen.
@@ -106,7 +106,7 @@ Hook in the first 2 seconds. No narration needed; big captions.
 
 ## 8. Facts you can use (all verified)
 
-- Build time: **about a minute**; single builds measured **52–76 s**; blue kettle **61.7 s**.
+- Build time: **about a minute**; single builds measured **52–88 s, median ≈65 s**; blue kettle **61.7 s**.
 - Cost: **~1 Lux3D credit per model**.
 - Lux3D features used: **image-to-3D (G1-Turbo / G1), text-to-3D, material transfer**; photos are uploaded to Aholo's asset storage first.
 - Models: ~80k faces, PBR materials, GLB files viewable in any browser and in AR.
